@@ -82,7 +82,8 @@ void twoCommandProcess(pid, buf){
 
 
 // 4
-void moreTwoCommandProcess(pid){
+void moreTwoCommandProcess(pid, pidHijos, ncommands){
+    pidHijos = malloc(ncommands * sizeof (int));
 
     if (pid==0){  // hijo
         close()
@@ -161,6 +162,7 @@ int main(void) {
 
     pid_t pid;
     pid = fork();
+    int *pidHijos;
 
     int **pipes;  // matriz de pipes
 
@@ -202,7 +204,7 @@ int main(void) {
         }
         else if(line->ncommands >= 2){
             printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
-            moreTwoCommandProcess(pid);
+            moreTwoCommandProcess(pid, pidHijos, line->ncommands);
         }
 
 
