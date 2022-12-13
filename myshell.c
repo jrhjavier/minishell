@@ -68,9 +68,22 @@ void twoCommandProcess(){
 */
 
 // 4
-void moreTwoCommandProcess(int pid){
+void moreTwoCommandProcess(pid_t pid, int *pidHijos, int ncommands, int **pipes){
+    pidHijos = (pid_t) malloc(ncommands * sizeof (int));  // creamos tantos pids como comandos haya
+    pipes = malloc((ncommands - 1) * sizeof(int *));  // reservamos memoria para matriz de pipes
 
-    if (pid==0){
+    for (int i = 0; i < ncommands - 1; ++i) {  // creamos tantos pipes como comandos - 1 haya
+        pipes[i] = (int *) malloc(sizeof (int) * 2);
+        if(pipe(pipes[i]) < 0){
+            fprintf(stderr, "Error al crear el pipe %s\n", strerror(errno));
+        }
+    }
+
+    for (int i = 0; i < ncommands; ++i) {  // un hijo por cada comando
+        pid = fork();
+    }
+    if (pid==0){  // hijo
+        close()
         printf("Hijo\n");
     } else{
         printf("Padre\n");
@@ -85,7 +98,7 @@ void  backgroundCommand(int pid){
 }
 
 
-// 6 --
+// 6
 void redirectionProcess(tline *line, pid_t pid){
     printf("REDIRECTION:\n");
 
