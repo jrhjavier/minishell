@@ -26,10 +26,8 @@ void prompt(){
 
 
 // 2
-void oneCommandProcess(char **argv){
-
-    pid_t pid;
-    pid = fork();
+void oneCommandProcess(char **argv, pid_t pid){
+    printf("ONE COMMAND:\n");
 
     if (pid==0){
         //printf("Hijo\n");
@@ -37,13 +35,13 @@ void oneCommandProcess(char **argv){
         if (execvp(argv[0],argv)<0){ //Ejecuta el comando.
             //Error
             printf("No se puede ejecutar el comando.\n");
+            exit(-1);
         }
-        exit(0);
 
     } else{
         //printf("Padre\n");
         wait(NULL); // Espera al hijo, evita hijo zombie.
-        //return;
+        return;
     }
 }
 
@@ -78,7 +76,7 @@ void twoCommandProcess(){
 */
 
 // 4
-void moreTwoCommandProcess(pid){
+void moreTwoCommandProcess(int pid){
 
     if (pid==0){
         printf("Hijo\n");
@@ -89,18 +87,18 @@ void moreTwoCommandProcess(pid){
 }
 
 // 5
-void  backgroundCommand(pid){
+void  backgroundCommand(int pid){
 
     printf("Mostramos pid de proceso en background es: %d \n", pid);
 }
 
 
 // 6
-void redirectionProcess(tline *line){
+void redirectionProcess(tline *line, pid_t pid){
+    printf("REDIRECTION:\n");
 
-    if (line->redirect_input){
-        // Hay redirección de entrada.
 
+    if (pid == 0){
         // Ejemplo: sort < .txt. Creamos descriptor de fichero f. Lee lo que hay en .txt y
         // dup2 copia f en 0, que sirve como stdin (es 0) de sort.
 
@@ -115,8 +113,9 @@ void redirectionProcess(tline *line){
         }
         printf("LLego hasta aqui");
         close(f);
-        
+
     }
+
     else if (line->redirect_output){
         // Hay redirección de salida.
 
@@ -154,63 +153,69 @@ int main(void) {
 	char buf[1024];
 	tline * line;
 	pid_t pid;
-    	pid = fork();
+    int status;
 	//int i,j;
 
     //signal(SIGINT,SIG_IGN); // En teoría ignoramos señales Ctrl + C y Ctrl + Z,
     //signal(SIGQUIT,SIG_IGN);// pero solo funciona con la primera! (En sitios ponen SIGQUIT)
 
-    prompt(); // Para que aparezca al ejecutar
 
-	while (fgets(buf, 1024, stdin)) { // DUDA
-		line = tokenize(buf); //Cogemos una línea por teclado.
-		if (line==NULL) { // Si está vacía continuamos hasta mostrar prompt.
-            continue;
-		}
+    prompt();
 
-        // Si hay redirecciones de cualquier tipo:
-        if (line->redirect_input || line->redirect_output || line->redirect_error ) {
-			//printf("redirección de entrada: %s\n", line->redirect_input);
-            redirectionProcess(line);
-		}
+    while (fgets(buf, 1024, stdin)) { // DUDA
 
-        // Si se ejecuta en background:
-		if (line->background) {
-			printf("Comando a ejecutarse en background\n");
-            backgroundCommand(pid);
+        pid = fork();
 
-        }
+        if (pid == 0){
 
-        // Diferente número de comandos introducidos:
-        if (line->ncommands == 1){ // Añadir cd.
-            //printf("Un solo comando introducido\n");
-            oneCommandProcess(line->commands->argv); // Procesamos 1 solo comando en la función con x mandatos.
-        }
-        //else if(line->ncommands == 2){
-        //    printf("2 argumentos: Implemetación con 1 pipe\n");
-        //    twoCommandProcess();
-        //}
-        else if(line->ncommands >= 2){
-            printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
-            moreTwoCommandProcess(pid);
-        }
+            //prompt();
+            line = tokenize(buf); //Cogemos una línea por teclado.
 
-
-        /*
-		for (i=0; i<line->ncommands; i++) { //Recorremos array de comandos.
+            if (line==NULL) { // Si está vacía continuamos hasta mostrar prompt.
+                continue;
+            }
+                // Si hay redirecciones de cualquier tipo:
+            else if (line->redirect_input || line->redirect_output || line->redirect_error ) {
+                //printf("redirección de entrada: %s\n", line->redirect_input);
+                redirectionProcess(line, pid);
+            }
+                // Si se ejecuta en background:
+            else if (line->background) {
+                printf("Comando a ejecutarse en background\n");
+                backgroundCommand(pid);
+            }
+                // Diferente número de comandos introducidos:
+            else if (line->ncommands == 1){ // Añadir cd.
+                //printf("Un solo comando introducido\n");
+                oneCommandProcess(line->commands->argv, pid); // Procesamos 1 solo comando en la función con x mandatos.
+            }
+                //else if(line->ncommands == 2){
+                //    printf("2 argumentos: Implemetación con 1 pipe\n");
+                //    twoCommandProcess();
+                //}
+            else if(line->ncommands >= 2){
+                printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
+                moreTwoCommandProcess(pid);
+            }
+            /*
+            for (i=0; i<line->ncommands; i++) { //Recorremos array de comandos.
             //execvp(line->commands->argv[0],line->commands->argv); // Me ejecuta el comando, pero se sale!
             // Con execvp, si sigue hacia abajo es que se ha producido un error...
-			printf("orden %d (%s):\n", i, line->commands[i].filename);
-			for (j=0; j<line->commands[i].argc; j++) { // Recorremos array de argumentos de comando.
-				printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
-			}
-		}
-        */
+            printf("orden %d (%s):\n", i, line->commands[i].filename);
+            for (j=0; j<line->commands[i].argc; j++) { // Recorremos array de argumentos de comando.
+            printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
+            }
+            }
+            */
+            prompt(); // Para que aparezca cada salto
+        } else{
+            wait(&status);
+            prompt();
+            //exit(0);
+        }
 
+    }
 
-        printf("Llego hatsa aquieeeee");
-        prompt(); // Para que aparezca cada salto
-	}
 
 	return 0;
 }
