@@ -47,19 +47,21 @@ void oneCommandProcess(char **argv){
     }
 }
 
-/*
+
 // 3
-void twoCommandProcess(){
+void twoCommandProcess(pid, buf){
+    int pipe_des[2];
+    FILE *fd;
 
-
-    pid_t pid;
-    pid = fork();
-
-    if (pid==0){
-        printf("Hijo\n");
+    if (pid==0){  // hijo
+        close(pipe_des[1]);  // hijo solo recibe, cerramos escribir
+        fd = fdopen(pipe_des[0], "r");  // tenemos FILE* con el descriptor del pipe
+        fgets(buf, 1024, fd);
+        fclose(fd);
+        printf("Hijo -> Recibido lo siguiente: \"%s\"\n", buf);
 
         //Ejemplo con ls:
-        char *arg_list[] = {"ls", "-l", NULL};
+        /*char *arg_list[] = {"ls", "-l", NULL};
 
 
         if (execvp("ls", arg_list)<0){
@@ -67,20 +69,23 @@ void twoCommandProcess(){
             printf("No se puede ejecutar el comando.\n");
         }
         //exit(0);
-
-    } else{
-        printf("Padre\n");
+        */
+    } else{  // padre
+        close(pipe_des[0]);  // solo envia, no lee
+        fd = fdopen(pipe_des[1], "w");
+        fprintf(execvp())
         wait(NULL); //
         return;
     }
     exit(0);
 }
-*/
+
 
 // 4
 void moreTwoCommandProcess(pid){
 
-    if (pid==0){
+    if (pid==0){  // hijo
+        close()
         printf("Hijo\n");
     } else{
         printf("Padre\n");
@@ -153,8 +158,12 @@ int main(void) {
 
 	char buf[1024];
 	tline * line;
-	pid_t pid;
-    	pid = fork();
+
+    pid_t pid;
+    pid = fork();
+
+    int **pipes;  // matriz de pipes
+
 	//int i,j;
 
     //signal(SIGINT,SIG_IGN); // En teoría ignoramos señales Ctrl + C y Ctrl + Z,
@@ -164,7 +173,8 @@ int main(void) {
 
 	while (fgets(buf, 1024, stdin)) { // DUDA
 		line = tokenize(buf); //Cogemos una línea por teclado.
-		if (line==NULL) { // Si está vacía continuamos hasta mostrar prompt.
+
+        if (line==NULL) { // Si está vacía continuamos hasta mostrar prompt.
             continue;
 		}
 
@@ -186,10 +196,10 @@ int main(void) {
             //printf("Un solo comando introducido\n");
             oneCommandProcess(line->commands->argv); // Procesamos 1 solo comando en la función con x mandatos.
         }
-        //else if(line->ncommands == 2){
-        //    printf("2 argumentos: Implemetación con 1 pipe\n");
-        //    twoCommandProcess();
-        //}
+        else if(line->ncommands == 2){
+            printf("2 argumentos: Implemetación con 1 pipe\n");
+            twoCommandProcess(pid, buf);
+        }
         else if(line->ncommands >= 2){
             printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
             moreTwoCommandProcess(pid);
@@ -208,7 +218,7 @@ int main(void) {
         */
 
 
-        printf("Llego hatsa aquieeeee");
+        printf("Llego hasta aquiiii");
         prompt(); // Para que aparezca cada salto
 	}
 
