@@ -47,7 +47,7 @@ void oneCommandProcess(char **argv){
     }
 }
 
-
+/*
 // 3
 void twoCommandProcess(){
 
@@ -74,18 +74,11 @@ void twoCommandProcess(){
         return;
     }
     exit(0);
-
-
-
-
 }
-
+*/
 
 // 4
-void moreTwoCommandProcess(){
-
-    pid_t pid;
-    pid = fork();
+void moreTwoCommandProcess(pid){
 
     if (pid==0){
         printf("Hijo\n");
@@ -96,9 +89,9 @@ void moreTwoCommandProcess(){
 }
 
 // 5
-void  backgroundCommand(){
+void  backgroundCommand(pid){
 
-    printf("Mostramos pid de proceso en background es: " " \n");
+    printf("Mostramos pid de proceso en background es: %d \n", pid);
 }
 
 
@@ -160,6 +153,8 @@ int main(void) {
 
 	char buf[1024];
 	tline * line;
+	pid_t pid;
+    	pid = fork();
 	//int i,j;
 
     //signal(SIGINT,SIG_IGN); // En teoría ignoramos señales Ctrl + C y Ctrl + Z,
@@ -182,7 +177,7 @@ int main(void) {
         // Si se ejecuta en background:
 		if (line->background) {
 			printf("Comando a ejecutarse en background\n");
-            backgroundCommand();
+            backgroundCommand(pid);
 
         }
 
@@ -191,13 +186,13 @@ int main(void) {
             //printf("Un solo comando introducido\n");
             oneCommandProcess(line->commands->argv); // Procesamos 1 solo comando en la función con x mandatos.
         }
-        else if(line->ncommands == 2){
-            printf("2 argumentos: Implemetación con 1 pipe\n");
-            twoCommandProcess();
-        }
-        else if(line->ncommands > 2){
-            printf("+2 argumentos: Implementación con +1 pipe\n");
-            moreTwoCommandProcess();
+        //else if(line->ncommands == 2){
+        //    printf("2 argumentos: Implemetación con 1 pipe\n");
+        //    twoCommandProcess();
+        //}
+        else if(line->ncommands >= 2){
+            printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
+            moreTwoCommandProcess(pid);
         }
 
 
