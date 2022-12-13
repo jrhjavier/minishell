@@ -110,6 +110,7 @@ void redirectionProcess(tline *line, pid_t pid){
 
     /*
     else if (line->redirect_output){
+
         // Hay redirección de salida.
 
         // Ejemplo: ls > .txt. Creamos descriptor de fichero f. Puede escribir, crear y truncar lo que hay en .txt
