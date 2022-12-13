@@ -26,22 +26,14 @@ void prompt(){
 
 
 // 2
-void oneCommandProcess(char **argv, pid_t pid){
+void oneCommandProcess(char **argv){
     printf("ONE COMMAND:\n");
 
-    if (pid==0){
         //printf("Hijo\n");
-
-        if (execvp(argv[0],argv)<0){ //Ejecuta el comando.
-            //Error
-            printf("No se puede ejecutar el comando.\n");
-            exit(-1);
-        }
-
-    } else{
-        //printf("Padre\n");
-        wait(NULL); // Espera al hijo, evita hijo zombie.
-        return;
+    if (execvp(argv[0],argv)<0){ //Ejecuta el comando.
+        //Error
+        printf("No se puede ejecutar el comando.\n");
+        exit(-1);
     }
 }
 
@@ -93,30 +85,32 @@ void  backgroundCommand(int pid){
 }
 
 
-// 6
+// 6 --
 void redirectionProcess(tline *line, pid_t pid){
     printf("REDIRECTION:\n");
 
+    pid_t a = pid;
+    printf("%d",a);
 
-    if (pid == 0){
+    if (line->redirect_output) {
+
         // Ejemplo: sort < .txt. Creamos descriptor de fichero f. Lee lo que hay en .txt y
         // dup2 copia f en 0, que sirve como stdin (es 0) de sort.
 
         int f;
-        f = open(line->redirect_input, O_RDONLY); //Creamos descriptor de archivo solo de lectura.
+        f = open(line->redirect_output, O_RDONLY); //Creamos descriptor de archivo solo de lectura.
 
-        if (dup2(f,0)<0){
-            //Error
-            printf("No se puede ejecutar el comando.\n");
-            close(f);
-            exit(-1);
+        if (f == -1) {
+            printf("ERROR");
+        } else {
+            dup2(f, 1);
         }
-        printf("LLego hasta aqui");
-        close(f);
-
+        execv(line->commands[0].filename, line->commands[0].argv);
     }
 
+    /*
     else if (line->redirect_output){
+
         // Hay redirección de salida.
 
         // Ejemplo: ls > .txt. Creamos descriptor de fichero f. Puede escribir, crear y truncar lo que hay en .txt
@@ -128,12 +122,12 @@ void redirectionProcess(tline *line, pid_t pid){
         dup2(f,1); //stdout. Imprime por pantalla.
         execv(line->commands[0].filename, line->commands[0].argv);
         close(f);
-        /*
+        *
         if (dup2(f,1)<0){
             //Error
             printf("No se puede ejecutar el comando.\n");
         }
-        */
+        *
 
     }
     else if (line->redirect_error){
@@ -142,6 +136,7 @@ void redirectionProcess(tline *line, pid_t pid){
         //dup2(f,2); //stderr
 
     }
+    */
 
 }
 
@@ -187,7 +182,7 @@ int main(void) {
                 // Diferente número de comandos introducidos:
             else if (line->ncommands == 1){ // Añadir cd.
                 //printf("Un solo comando introducido\n");
-                oneCommandProcess(line->commands->argv, pid); // Procesamos 1 solo comando en la función con x mandatos.
+                oneCommandProcess(line->commands->argv); // Procesamos 1 solo comando en la función con x mandatos.
             }
                 //else if(line->ncommands == 2){
                 //    printf("2 argumentos: Implemetación con 1 pipe\n");
