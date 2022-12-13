@@ -85,7 +85,7 @@ void  backgroundCommand(int pid){
 }
 
 
-// 6
+// 6 --
 void redirectionProcess(tline *line, pid_t pid){
     printf("REDIRECTION:\n");
 
