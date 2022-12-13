@@ -35,6 +35,7 @@ void oneCommandProcess(char **argv){
         printf("No se puede ejecutar el comando.\n");
         exit(-1);
     }
+
 }
 
 /*
@@ -86,57 +87,54 @@ void  backgroundCommand(int pid){
 
 
 // 6 --
-void redirectionProcess(tline *line, pid_t pid){
-    printf("REDIRECTION:\n");
+void redirectionProcess(tline *line){
+    printf("REDIRECTION:");
 
-    pid_t a = pid;
-    printf("%d",a);
 
-    if (line->redirect_output) {
+    if (line->redirect_input) {
+
+        // Hay redirección de entrada.
 
         // Ejemplo: sort < .txt. Creamos descriptor de fichero f. Lee lo que hay en .txt y
         // dup2 copia f en 0, que sirve como stdin (es 0) de sort.
 
-        int f;
-        f = open(line->redirect_output, O_RDONLY); //Creamos descriptor de archivo solo de lectura.
+        int f; // abrimos gile.txt como escritura!!
+        f = open(line->redirect_input, O_RDONLY); //Creamos descriptor de archivo solo de lectura.
 
-        if (f == -1) {
-            printf("ERROR");
-        } else {
-            dup2(f, 1);
-        }
-        execv(line->commands[0].filename, line->commands[0].argv);
+        dup2(f,STDIN_FILENO);
+        execvp(line->commands->argv[0],line->commands->argv);
+        //execlp("/usr/bin/wc", "wc", NULL);
+
+
     }
 
-    /*
-    else if (line->redirect_output){
+    if (line->redirect_output) {
 
         // Hay redirección de salida.
 
         // Ejemplo: ls > .txt. Creamos descriptor de fichero f. Puede escribir, crear y truncar lo que hay en .txt
         // dup2 copia f en 1, que sirve como stdout (es 1) de ls. Ejecutamos el comando ya dentro de f, ya que f es el stdout.
 
-        int f;
-        f = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600); //Creamos descriptor de archivo write,create,trunc, con permisos 0600.
 
-        dup2(f,1); //stdout. Imprime por pantalla.
-        execv(line->commands[0].filename, line->commands[0].argv);
-        close(f);
-        *
-        if (dup2(f,1)<0){
-            //Error
-            printf("No se puede ejecutar el comando.\n");
-        }
-        *
+        int f; // abrimos gile.txt como escritura!!
+        f = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC , 0600); //Creamos descriptor de archivo solo de lectura.
+
+        dup2(f,STDOUT_FILENO);
+        execvp(line->commands->argv[0],line->commands->argv);
+        //execlp("/bin/ls", "ls", NULL);
+
 
     }
-    else if (line->redirect_error){
-        // Hay redirección de error.
-        //int f;
-        //dup2(f,2); //stderr
 
+    if (line->redirect_error){
+
+        int f; // abrimos gile.txt como escritura!!
+        f = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC , 0600); //Creamos descriptor de archivo solo de lectura.
+
+        dup2(f,STDOUT_FILENO);
+        execvp(line->commands->argv[0],line->commands->argv);
+        //execlp("/bin/ls", "ls", NULL);
     }
-    */
 
 }
 
@@ -172,7 +170,7 @@ int main(void) {
                 // Si hay redirecciones de cualquier tipo:
             else if (line->redirect_input || line->redirect_output || line->redirect_error ) {
                 //printf("redirección de entrada: %s\n", line->redirect_input);
-                redirectionProcess(line, pid);
+                redirectionProcess(line);
             }
                 // Si se ejecuta en background:
             else if (line->background) {
@@ -192,6 +190,7 @@ int main(void) {
                 printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
                 moreTwoCommandProcess(pid);
             }
+
             /*
             for (i=0; i<line->ncommands; i++) { //Recorremos array de comandos.
             //execvp(line->commands->argv[0],line->commands->argv); // Me ejecuta el comando, pero se sale!
@@ -201,7 +200,8 @@ int main(void) {
             printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
             }
             }
-            */
+             */
+
             prompt(); // Para que aparezca cada salto
         } else{
             wait(&status);
