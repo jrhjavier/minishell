@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <wait.h>
 #include <fcntl.h>
+#include <string.h>
+#include <errno.h>
 
 #include "parser.h"
 
@@ -15,6 +17,7 @@ void twoCommandProcess(); // 3
 void moreTwoCommandProcess(); // 4
 void backgroundCommand(); // 5
 void redirectionProcess(); // 6
+void mycd(); // 7
 
 
 // 1
@@ -26,14 +29,24 @@ void prompt(){
 
 
 // 2
-void oneCommandProcess(char **argv){
-    printf("ONE COMMAND:\n");
+void oneCommandProcess(tline *line){
 
-        //printf("Hijo\n");
-    if (execvp(argv[0],argv)<0){ //Ejecuta el comando.
-        //Error
-        printf("No se puede ejecutar el comando.\n");
-        exit(-1);
+    if(strcmp(line->commands->argv[0],"cd") == 0){ //Comano cd
+        mycd(line);
+    }
+
+    else if (line->redirect_input || line->redirect_output || line->redirect_error ) {
+        //printf("redirección de entrada: %s\n", line->redirect_input);
+        redirectionProcess(line);
+    }
+
+    else {
+
+        if (execvp(line->commands->argv[0], line->commands->argv) < 0) { //Ejecuta el comando.
+            // Error
+            printf("%s: No se encuentra el mandato.\n", line->commands->argv[0]);
+            exit(-1);
+        }
     }
 }
 
@@ -98,59 +111,96 @@ void  backgroundCommand(int pid){
 }
 
 
-// 6
-void redirectionProcess(tline *line, pid_t pid){
-    printf("REDIRECTION:\n");
+// 6 --
+void redirectionProcess(tline *line){
 
-    pid_t a = pid;
-    printf("%d",a);
 
-    if (line->redirect_output) {
+    if (line->redirect_input) {
+
+        // Hay redirección de entrada.
 
         // Ejemplo: sort < .txt. Creamos descriptor de fichero f. Lee lo que hay en .txt y
         // dup2 copia f en 0, que sirve como stdin (es 0) de sort.
 
-        int f;
-        f = open(line->redirect_output, O_RDONLY); //Creamos descriptor de archivo solo de lectura.
+        int f; // abrimos gile.txt como escritura!!
+        int errnum; // Guardar numero de error
+        f = open(line->redirect_input, O_RDONLY); //Creamos descriptor de archivo solo de lectura.
 
-        if (f == -1) {
-            printf("ERROR");
-        } else {
-            dup2(f, 1);
+        if ( f != -1){
+
+            dup2(f,STDIN_FILENO); // La stdin de lo que ejecutemos en adelante será lo que contiene el descriptor f.
+
+            if (execvp(line->commands->argv[0],line->commands->argv) < 0){ //Ejecuta el comando.
+                //Error
+                printf("%s: No se encuentra el mandato.\n",line->commands->argv[0]);
+                exit(-1);
+            }
+
+        }else{
+
+            errnum = errno; // Guardo numero de error
+            fprintf(stderr,"%s: Error: %s\n", line->redirect_input, strerror(errnum)); // Imprimo "Error: No such file or directory."
+
         }
-        execv(line->commands[0].filename, line->commands[0].argv);
+
     }
 
-    /*
-    else if (line->redirect_output){
+    if (line->redirect_output) {
 
         // Hay redirección de salida.
 
         // Ejemplo: ls > .txt. Creamos descriptor de fichero f. Puede escribir, crear y truncar lo que hay en .txt
         // dup2 copia f en 1, que sirve como stdout (es 1) de ls. Ejecutamos el comando ya dentro de f, ya que f es el stdout.
 
-        int f;
-        f = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC, 0600); //Creamos descriptor de archivo write,create,trunc, con permisos 0600.
 
-        dup2(f,1); //stdout. Imprime por pantalla.
-        execv(line->commands[0].filename, line->commands[0].argv);
-        close(f);
-        *
-        if (dup2(f,1)<0){
+        int f; // abrimos file.txt como escritura!!
+        f = open(line->redirect_output, O_WRONLY | O_CREAT | O_TRUNC , 0600); //Creamos descriptor de escritura, cereación y truncamiento con respectivos permisos.
+        // NO TENEMOS ERROR, SI NO EXISTE EL FICHERO, LO CREAMOS!!
+
+        dup2(f,STDOUT_FILENO); // A partir de aquí, el stdout de lo que se ejecute va a ir a parar a f. A line->redirect
+
+        if (execvp(line->commands->argv[0],line->commands->argv) < 0){ //Ejecuta el comando.
             //Error
-            printf("No se puede ejecutar el comando.\n");
+            printf("%s: No se encuentra el mandato.\n",line->commands->argv[0]);
+            exit(-1);
+
         }
-        *
 
     }
-    else if (line->redirect_error){
-        // Hay redirección de error.
-        //int f;
-        //dup2(f,2); //stderr
+
+    if (line->redirect_error){
+
+        int f; // abrimos gile.txt como escritura!!
+        f = open(line->redirect_error, O_WRONLY | O_CREAT | O_TRUNC , 0600); //Creamos descriptor de archivo solo de lectura.
+        // NO TENEMOS ERROR, SI NO EXISTE EL FICHERO, LO CREAMOS!!
+
+        dup2(f,STDOUT_FILENO);
+
+        if (execvp(line->commands->argv[0],line->commands->argv) < 0){ //Ejecuta el comando.
+            //Error
+            printf("%s: No se encuentra el mandato.\n",line->commands->argv[0]);
+            exit(-1);
+
+        }
 
     }
-    */
 
+}
+
+// 7
+void mycd(tline *line){
+
+    if ( line->commands->argc > 1){ // cd dir
+        int dir = chdir(line->commands->argv[1]); // Change director!!
+        int errnum;
+
+        if (dir == -1){ // No existe directorio
+            errnum = errno;
+            fprintf(stderr,"%s: Error: %s\n", line->commands->argv[1],strerror(errnum)); // Imprimo "Error: No such file or directory."
+        }
+    } else{ //cd
+        chdir(getenv("HOME"));
+    }
 }
 
 
@@ -182,21 +232,24 @@ int main(void) {
             if (line==NULL) { // Si está vacía continuamos hasta mostrar prompt.
                 continue;
             }
-                // Si hay redirecciones de cualquier tipo:
-            else if (line->redirect_input || line->redirect_output || line->redirect_error ) {
-                //printf("redirección de entrada: %s\n", line->redirect_input);
-                redirectionProcess(line, pid);
+            /*
+            else if (line->redirect_input || line->redirect_output || line->redirect_error) {
+                redirectionProcess(line);
             }
-                // Si se ejecuta en background:
+             */
+
+            // Si se ejecuta en background:
             else if (line->background) {
                 printf("Comando a ejecutarse en background\n");
                 backgroundCommand(pid);
             }
+
                 // Diferente número de comandos introducidos:
             else if (line->ncommands == 1){ // Añadir cd.
-                //printf("Un solo comando introducido\n");
-                oneCommandProcess(line->commands->argv); // Procesamos 1 solo comando en la función con x mandatos.
+                //printf("Un solo comando introducido:\n");
+                oneCommandProcess(line); // Procesamos 1 solo comando en la función con x mandatos.
             }
+
                 //else if(line->ncommands == 2){
                 //    printf("2 argumentos: Implemetación con 1 pipe\n");
                 //    twoCommandProcess();
@@ -205,6 +258,7 @@ int main(void) {
                 printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
                 moreTwoCommandProcess(pid);
             }
+
             /*
             for (i=0; i<line->ncommands; i++) { //Recorremos array de comandos.
             //execvp(line->commands->argv[0],line->commands->argv); // Me ejecuta el comando, pero se sale!
@@ -214,7 +268,8 @@ int main(void) {
             printf("  argumento %d: %s\n", j, line->commands[i].argv[j]);
             }
             }
-            */
+             */
+
             prompt(); // Para que aparezca cada salto
         } else{
             wait(&status);

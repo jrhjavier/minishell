@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/minishell.iml" filepath="$PROJECT_DIR$/.idea/minishell.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/minishellGit.iml" filepath="$PROJECT_DIR$/.idea/minishellGit.iml" />
     </modules>
   </component>
 </project>
