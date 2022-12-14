@@ -300,9 +300,12 @@ void mycd(tline *line){
 int main(void) {
 
 	char buf[1024];
-	tline * line;
-	pid_t pid;
-    int status;
+    	tline * line;
+    	pid_t pid;
+    	pid_t *pidHijos;
+    	int status;
+    	int **pipes;
+    	int status;
 	//int i,j;
 
     //signal(SIGINT,SIG_IGN); // En teoría ignoramos señales Ctrl + C y Ctrl + Z,
@@ -347,7 +350,7 @@ int main(void) {
                 //}
             else if(line->ncommands >= 2){
                 printf("2 o mas argumentos: Implementación con 1 o mas pipes\n");
-                moreTwoCommandProcess(pid);
+                moreTwoCommandProcess(pid, pidHijos, pipes, line);
             }
 
             /*
