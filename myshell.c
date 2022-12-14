@@ -81,26 +81,117 @@ void twoCommandProcess(){
 */
 
 // 4
-void moreTwoCommandProcess(pid_t pid, int *pidHijos, int ncommands, int **pipes){
-    pidHijos = (pid_t) malloc(ncommands * sizeof (int));  // creamos tantos pids como comandos haya
-    pipes = malloc((ncommands - 1) * sizeof(int *));  // reservamos memoria para matriz de pipes
+void moreTwoCommandProcess(pid_t pid, pid_t *pidHijos, int **pipes, tline* line){
+    pidHijos = malloc(line->ncommands * sizeof (int));  // creamos tantos pids como comandos haya
+    pipes = malloc((line->ncommands - 1) * sizeof(int *));  // reservamos memoria para matriz de pipes
 
-    for (int i = 0; i < ncommands - 1; ++i) {  // creamos tantos pipes como comandos - 1 haya
-        pipes[i] = (int *) malloc(sizeof (int) * 2);
-        if(pipe(pipes[i]) < 0){
+    for (int i = 0; i < line->ncommands - 1; ++i) {  // creamos tantos pipes como comandos - 1 haya
+        pipes[i] = (int *) malloc(sizeof (int) * 2);  // reservamos memoria (2 posiciones) para el pipe
+        if(pipe(pipes[i]) < 0){  // inicializamos el pipe
             fprintf(stderr, "Error al crear el pipe %s\n", strerror(errno));
         }
     }
 
-    for (int i = 0; i < ncommands; ++i) {  // un hijo por cada comando
+    for (int i = 0; i < line->ncommands; ++i) {  // un hijo por cada comando
         pid = fork();
+
+        if(pid < 0){  // Error
+            fprintf(stderr, "Error al crear al hijo. Fallo en el fork %s\n", strerror(errno));
+            exit(-1);
+        }
+
+        else if(pid == 0){  // Hijo
+            // PRIMER COMANDO
+            if (i == 0){
+                //printf("Soy el primer comando\n");
+                if (line->redirect_input != NULL){  // Hay redireccion de entrada
+                    ///// FUNCION REDIRECCION DE ENTRADA /////
+                }
+                for (int j = 1; j < line->ncommands - 1; ++j) {  // Como hemos creado tantos pipes, hay que cerrarlos menos el 0 (que es el que voy a usar)
+                    for (int k = 0; k <= 1; ++k) {
+                        close(pipes[j][k]);  // Cerramos entrada y salida (0 y 1)
+                    }
+                }
+                close(pipes[0][0]);  // cerramos el de lectura del que vamos a usar ya que vamos a meterlo en el pipe
+                dup2(pipes[0][1], 1);  // escribimos en el pipe
+            }
+
+            // COMANDO INTERMEDIO
+            else if (0 < i < line->ncommands-1){
+                //printf("Soy el comando intermedio %d\n", i);
+                if(line->ncommands != 3){  // si no hay 3 comandos
+                    if (i == 1){  // soy el SEGUNDO COMANDO y no soy el penultimo (ya que no hay 3 comandos)
+                        for (int j = i+1; j < line->ncommands-1; ++j) {  // cerramos todos los pipes menos el que vamos a usar
+                            close(pipes[j][0]);
+                            close(pipes[j][1]);
+                        }
+                    }
+
+                    else if (i == line->ncommands-2){  // soy el PENULTIMO COMANDO
+                        for (int j = 0; j < i-1; ++j) {  // cerramos todos los pipes anteriores al penultimo
+                            close(pipes[j][0]);
+                            close(pipes[j][1]);
+                        }
+                    }
+
+                    else{  // no soy NI el PENULTIMO NI el SEGUNDO
+                        for (int j = 0; j < i-1; ++j) {  // cerramos todos los pipes anteriores al que vamos a utilizar
+                            close(pipes[j][0]);
+                            close(pipes[j][1]);
+                        }
+                        for (int j = i+1; j < line->ncommands-1; ++j) {  // cerramos todos los pipes siguientes al que vamos a utilizar
+                            close(pipes[j][0]);
+                            close(pipes[j][1]);
+                        }
+                    }
+                }
+                close(pipes[i-1][1]);  // cerramos la escritura del anterior al comando que toca
+                dup2(pipes[i-1][0], 0);  // metemos lo que lea el comando anterior en el stdin del comando actual
+                close(pipes[i][0]);  // cerramos la lectura del comando que toca
+                dup2(pipes[i][1], 1);  // metemos la escritura del comando que toca en el stdout
+            }
+
+            // ULTIMO COMANDO
+            else{
+                //printf("Soy el ultimo comando\n");
+                if (line->redirect_output != NULL){  // Hay redireccion de salida
+                    ///// FUNCION REDIRECCION DE SALIDA /////
+                }
+                if (line->redirect_error != NULL){  // Hay redireccion de error
+                    ///// FUNCION REDIRECCION DE ERROR /////
+                }
+                for (int j = 0; j < line->ncommands-2; ++j) {  // cerramos todos los comandos menos el que vamos a utilizar (todos los anteriores)
+                    close(pipes[j][0]);
+                    close(pipes[j][1]);
+                }
+                close(pipes[i-1][1]);  // cerramos la escritura del comando anterior
+                dup2(pipes[i-1][0], 0);  // metemos la lectura del comando anterior en el stdin del ultimo comando
+            }
+            execvp(line->commands[i].filename, line->commands[i].argv);  // ejecutamos el comando con sus argumentos
+            // Si llegamos hasta aqui -> no se ha ejecutado el comando correctamente (Error)
+            fprintf(stderr, "Error al ejecutar el comando.\n");
+            fprintf(stderr, "%s: No se encuentra el comando.\n", line->commands[i].filename);
+        }
+
+        else{  //Padre
+            pidHijos[i] = pid;  // vamos guardando los pids de los hijos en el array de pids
+        }
     }
-    if (pid==0){  // hijo
-        close()
-        printf("Hijo\n");
-    } else{
-        printf("Padre\n");
+
+    for (int i = 0; i < line->ncommands; ++i) {  // esperamos a TODOS los hijos
+        waitpid(pidHijos[i], NULL, 0);  // -1 -> espera por cualquier proceso hijo -> NO SE SI HACE FALTA EL ARRAY DE PIDS!!!
     }
+
+    for (int i = 0; i < line->ncommands-1; ++i) {  // cerramos todos los pipes utilizados
+        close(pipes[i][0]);
+        close(pipes[i][1]);
+    }
+
+    for (int i = 0; i < line->ncommands; ++i) {
+        free(pipes[i]);  // liberamos la matriz de pipes
+    }
+    free(pipes);  // liberamos la matriz de pipes
+    free(pidHijos);  // liberamos el array de pids
 
 }
 
